@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: MIT
-// Copyright © 2018-2023 WireGuard LLC. All Rights Reserved.
-
 import UIKit
 import os.log
 
@@ -11,6 +8,7 @@ class SettingsTableViewController: UITableViewController {
         case goBackendVersion
         case exportZipArchive
         case viewLog
+        case passcodeFaceIDAuthentication
 
         var localizedUIString: String {
             switch self {
@@ -18,6 +16,7 @@ class SettingsTableViewController: UITableViewController {
             case .goBackendVersion: return tr("settingsVersionKeyWireGuardGoBackend")
             case .exportZipArchive: return tr("settingsExportZipButtonTitle")
             case .viewLog: return tr("settingsViewLogButtonTitle")
+            case .passcodeFaceIDAuthentication: return tr("settingsPasscodeFaceIDAuthenticationTitle")
             }
         }
     }
@@ -25,7 +24,8 @@ class SettingsTableViewController: UITableViewController {
     let settingsFieldsBySection: [[SettingsFields]] = [
         [.iosAppVersion, .goBackendVersion],
         [.exportZipArchive],
-        [.viewLog]
+        [.viewLog],
+        [.passcodeFaceIDAuthentication]
     ]
 
     let tunnelsManager: TunnelsManager?
@@ -111,7 +111,21 @@ class SettingsTableViewController: UITableViewController {
     func presentLogView() {
         let logVC = LogViewController()
         navigationController?.pushViewController(logVC, animated: true)
+    }
 
+    func presentAuthenticationSettings() {
+        let alert = UIAlertController(title: tr("settingsPasscodeFaceIDAuthenticationTitle"), message: nil, preferredStyle: .alert)
+        let enableAction = UIAlertAction(title: tr("settingsEnable"), style: .default) { _ in
+            UserDefaults.standard.set(true, forKey: "isAuthenticationEnabled")
+        }
+        let disableAction = UIAlertAction(title: tr("settingsDisable"), style: .destructive) { _ in
+            UserDefaults.standard.set(false, forKey: "isAuthenticationEnabled")
+        }
+        let cancelAction = UIAlertAction(title: tr("actionCancel"), style: .cancel, handler: nil)
+        alert.addAction(enableAction)
+        alert.addAction(disableAction)
+        alert.addAction(cancelAction)
+        present(alert, animated: true, completion: nil)
     }
 }
 
@@ -132,6 +146,8 @@ extension SettingsTableViewController {
             return tr("settingsSectionTitleExportConfigurations")
         case 2:
             return tr("settingsSectionTitleTunnelLog")
+        case 3:
+            return tr("settingsSectionTitleAuthentication")
         default:
             return nil
         }
@@ -165,6 +181,13 @@ extension SettingsTableViewController {
             cell.buttonText = field.localizedUIString
             cell.onTapped = { [weak self] in
                 self?.presentLogView()
+            }
+            return cell
+        } else if field == .passcodeFaceIDAuthentication {
+            let cell: ButtonCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.buttonText = field.localizedUIString
+            cell.onTapped = { [weak self] in
+                self?.presentAuthenticationSettings()
             }
             return cell
         }
