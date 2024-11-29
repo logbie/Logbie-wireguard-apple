@@ -1,8 +1,6 @@
-// SPDX-License-Identifier: MIT
-// Copyright © 2018-2023 WireGuard LLC. All Rights Reserved.
-
 import UIKit
 import os.log
+import LocalAuthentication
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -10,6 +8,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     var mainVC: MainViewController?
     var isLaunchedForSpecificAction = false
+    var authenticationRetries = 0
 
     func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         Logger.configureGlobal(tagged: "APP", withFilePath: FileManager.logFileURL?.path)
@@ -39,6 +38,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         mainVC?.refreshTunnelConnectionStatuses()
+        authenticateUser()
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -54,6 +54,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let tunnelName = shortcutItem.localizedTitle
         mainVC?.showTunnelDetailForTunnel(named: tunnelName, animated: false, shouldToggleStatus: true)
         completionHandler(true)
+    }
+
+    private func authenticateUser() {
+        let context = LAContext()
+        var error: NSError?
+
+        if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+            let reason = "Authenticate to access the app"
+
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, authenticationError in
+                DispatchQueue.main.async {
+                    if success {
+                        self.authenticationRetries = 0
+                    } else {
+                        self.handleAuthenticationFailure(error: authenticationError)
+                    }
+                }
+            }
+        } else {
+            handleAuthenticationFailure(error: error)
+        }
+    }
+
+    private func handleAuthenticationFailure(error: Error?) {
+        if let laError = error as? LAError, laError.code == .userCancel {
+            if authenticationRetries < 3 {
+                authenticationRetries += 1
+                authenticateUser()
+            } else {
+                ErrorPresenter.showErrorAlert(title: "Authentication Failed", message: "Maximum number of attempts reached.", from: self.mainVC, onDismissal: {
+                    exit(0)
+                })
+            }
+        } else {
+            ErrorPresenter.showErrorAlert(title: "Authentication Failed", message: error?.localizedDescription ?? "Unknown error", from: self.mainVC, onDismissal: {
+                exit(0)
+            })
+        }
     }
 }
 

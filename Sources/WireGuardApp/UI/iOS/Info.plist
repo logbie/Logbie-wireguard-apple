@@ -124,7 +124,7 @@
 		</dict>
 	</array>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Localized</string>
+	<string>Face ID is used for accessing the app</string>
 	<key>com.wireguard.ios.app_group_id</key>
 	<string>group.$(APP_ID_IOS)</string>
 </dict>
